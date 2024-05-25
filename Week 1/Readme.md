@@ -81,13 +81,15 @@
 
 6. Which item was purchased first by the customer after they became a member?
 ~~~sql
-    SELECT m.product_name, top_items.customer_id FROM (SELECT full_subq.product_id, full_subq.customer_id FROM 
-    (SELECT customer_id, MIN(subq.diff) as min_date FROM
-    	(SELECT s.*, memb.join_date, order_date - join_date AS diff FROM 			dannys_diner.sales s
-    	JOIN dannys_diner.members memb
-    	ON s.customer_id = memb.customer_id
-    	WHERE s.order_date - memb.join_date > 0) subq
-    GROUP BY subq.customer_id) grouped_subq
+    SELECT m.product_name, top_items.customer_id FROM (SELECT full_subq.product_id, full_subq.customer_id
+    FROM
+     (SELECT customer_id, MIN(subq.diff) AS min_date
+     FROM
+      (SELECT s.*, memb.join_date, order_date - join_date AS diff FROM dannys_diner.sales s
+      JOIN dannys_diner.members memb
+      ON s.customer_id = memb.customer_id
+      WHERE s.order_date - memb.join_date > 0) subq
+      GROUP BY subq.customer_id) grouped_subq
     
     JOIN
     
@@ -95,7 +97,6 @@
     JOIN dannys_diner.members memb
     ON s.customer_id = memb.customer_id
     WHERE s.order_date - memb.join_date > 0) full_subq
-    
     ON grouped_subq.customer_id = full_subq.customer_id
     AND grouped_subq.min_date = full_subq.diff) top_items
     
@@ -112,10 +113,13 @@
 
 ~~~sql
 /* Shorter Query */
-    SELECT subq.diff, m.product_name, subq.customer_id FROM (SELECT s.*, memb.join_date, order_date - join_date AS diff FROM 			dannys_diner.sales s
-    	JOIN dannys_diner.members memb
-    	ON s.customer_id = memb.customer_id
-    	WHERE s.order_date - memb.join_date > 0) subq
+    SELECT subq.diff, m.product_name, subq.customer_id 
+    FROM
+     (SELECT s.*, memb.join_date, order_date - join_date AS diff
+     FROM dannys_diner.sales s
+     JOIN dannys_diner.members memb
+     ON s.customer_id = memb.customer_id
+     WHERE s.order_date - memb.join_date > 0) subq
     
     JOIN dannys_diner.menu m
     ON m.product_id = subq.product_id
@@ -134,28 +138,32 @@
 7. Which item was purchased just before the customer became a member?
 ~~~sql
 # Getting the product name and the associated customer_id
-SELECT product_name, customer_id, order_date FROM
-	(# Getting the product_id by self-joining the subq
-	SELECT * FROM
-		(# Getting the customer_id with its max diff, i.e. the one that is closest to 0
-		SELECT customer_id, MAX(subq.diff) as max_diff FROM
-			(# getting the diff
-			SELECT s.*, memb.join_date, order_date - join_date AS diff FROM 			dannys_diner.sales s
-			JOIN dannys_diner.members memb
-			ON s.customer_id = memb.customer_id
-			WHERE s.order_date - memb.join_date < 0) subq
-		GROUP BY customer_id) grouped_subq
+SELECT product_name, customer_id, order_date
+FROM
+ (# Getting the product_id by self-joining the subq
+ SELECT * FROM
+  (# Getting the customer_id with its max diff, i.e. the one that is closest to 0
+  SELECT customer_id, MAX(subq.diff) as max_diff
+  FROM
+   (# getting the diff
+   SELECT s.*, memb.join_date, order_date - join_date AS diff 
+   FROM dannys_diner.sales s
+   JOIN dannys_diner.members memb
+   ON s.customer_id = memb.customer_id
+   WHERE s.order_date - memb.join_date < 0) subq
+  GROUP BY customer_id) grouped_subq
 
-	JOIN 
+JOIN 
 
-	(SELECT s.product_id, s.order_date, s.customer_id AS customer_id_to_drop, memb.join_date, order_date - join_date AS diff FROM
- 	dannys_diner.sales s
-	JOIN dannys_diner.members memb
-	ON s.customer_id = memb.customer_id
-	WHERE s.order_date - memb.join_date < 0) full_subq
+ (SELECT s.product_id, s.order_date, s.customer_id AS customer_id_to_drop, memb.join_date, order_date - join_date AS diff
+ FROM dannys_diner.sales s
 
-	ON grouped_subq.customer_id = full_subq.customer_id_to_drop
-	AND grouped_subq.max_diff = full_subq.diff) top_items
+ JOIN dannys_diner.members memb
+ ON s.customer_id = memb.customer_id
+ WHERE s.order_date - memb.join_date < 0) full_subq
+
+ON grouped_subq.customer_id = full_subq.customer_id_to_drop
+AND grouped_subq.max_diff = full_subq.diff) top_items
 
 JOIN
     
@@ -171,11 +179,13 @@ ON m.product_id = top_items.product_id
 
 ~~~sql
 /* Shorter Query */
-    SELECT subq.diff, m.product_name, subq.customer_id FROM (SELECT s.*, memb.join_date, order_date - join_date AS diff 
-    FROM dannys_diner.sales s
-    	JOIN dannys_diner.members memb
-    	ON s.customer_id = memb.customer_id
-    	WHERE s.order_date - memb.join_date < 0) subq
+    SELECT subq.diff, m.product_name, subq.customer_id
+    FROM
+     (SELECT s.*, memb.join_date, order_date - join_date AS diff 
+     FROM dannys_diner.sales s
+     JOIN dannys_diner.members memb
+     ON s.customer_id = memb.customer_id
+     WHERE s.order_date - memb.join_date < 0) subq
     
     JOIN dannys_diner.menu m
     ON m.product_id = subq.product_id
