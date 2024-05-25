@@ -1,11 +1,11 @@
 ### Case study Questions
 1. What is the total amount each customer spent at the restaurant?
 ~~~sql
-    SELECT customer_id, SUM(price) 
-    FROM dannys_diner.sales s 
-    LEFT JOIN dannys_diner.menu m 
-    ON s.product_id = m.product_id
-    GROUP BY customer_id;
+SELECT customer_id, SUM(price) 
+FROM dannys_diner.sales s 
+LEFT JOIN dannys_diner.menu m 
+ON s.product_id = m.product_id
+GROUP BY customer_id;
 ~~~
 
 | customer_id | sum |
@@ -16,8 +16,8 @@
 
 2. How many days has each customer visited the restaurant?
 ~~~sql
-    SELECT customer_id, COUNT(DISTINCT order_date) FROM dannys_diner.sales
-    GROUP BY customer_id;
+SELECT customer_id, COUNT(DISTINCT order_date) FROM dannys_diner.sales
+GROUP BY customer_id;
 ~~~
 
 | customer_id | count |
@@ -28,15 +28,15 @@
 
 3. What was the first item from the menu purchased by each customer?
 ~~~sql
-    SELECT DISTINCT left_table.product_name, right_table.customer_id FROM dannys_diner.menu left_table
-    JOIN (SELECT product_id, customer_id, order_date FROM dannys_diner.sales s
-    JOIN (SELECT customer_id AS c_id, MIN(order_date) AS minimum
-    FROM dannys_diner.sales
-    GROUP BY customer_id) yuhu
-    ON s.customer_id = yuhu.c_id
-    WHERE s.order_date = yuhu.minimum) right_table
-    ON left_table.product_id = right_table.product_id
-    ORDER BY customer_id;
+SELECT DISTINCT left_table.product_name, right_table.customer_id FROM dannys_diner.menu left_table
+JOIN (SELECT product_id, customer_id, order_date FROM dannys_diner.sales s
+JOIN (SELECT customer_id AS c_id, MIN(order_date) AS minimum
+FROM dannys_diner.sales
+GROUP BY customer_id) yuhu
+ON s.customer_id = yuhu.c_id
+WHERE s.order_date = yuhu.minimum) right_table
+ON left_table.product_id = right_table.product_id
+ORDER BY customer_id;
 ~~~
 
 | product_name | customer_id |
@@ -48,12 +48,12 @@
 
 4. What is the most purchased item on the menu and how many times was it purchased by all customers?
 ~~~sql
-    SELECT DISTINCT left_table.product_name FROM dannys_diner.menu left_table
-    JOIN(SELECT product_id, COUNT(order_date) AS nr_ordered FROM dannys_diner.sales
-    GROUP BY product_id
-    ORDER BY nr_ordered DESC 
-    LIMIT 1) right_table
-    ON left_table.product_id = right_table.product_id;
+SELECT DISTINCT left_table.product_name FROM dannys_diner.menu left_table
+JOIN(SELECT product_id, COUNT(order_date) AS nr_ordered FROM dannys_diner.sales
+GROUP BY product_id
+ORDER BY nr_ordered DESC 
+LIMIT 1) right_table
+ON left_table.product_id = right_table.product_id;
 ~~~
 
 | product_name |
@@ -62,11 +62,11 @@
 
 5. Which item was the most popular for each customer?
 ~~~sql
-    SELECT m.product_name, s.customer_id, s.nr_ordered FROM dannys_diner.menu m
-    JOIN(SELECT customer_id, product_id, COUNT(order_date) as nr_ordered FROM dannys_diner.sales
-    GROUP BY customer_id, product_id) s
-    ON m.product_id = s.product_id
-    ORDER BY s.customer_id, s.nr_ordered DESC;
+SELECT m.product_name, s.customer_id, s.nr_ordered FROM dannys_diner.menu m
+JOIN(SELECT customer_id, product_id, COUNT(order_date) as nr_ordered FROM dannys_diner.sales
+GROUP BY customer_id, product_id) s
+ON m.product_id = s.product_id
+ORDER BY s.customer_id, s.nr_ordered DESC;
 ~~~
 
 | product_name | customer_id | nr_ordered |
@@ -81,29 +81,29 @@
 
 6. Which item was purchased first by the customer after they became a member?
 ~~~sql
-    SELECT m.product_name, top_items.customer_id FROM (SELECT full_subq.product_id, full_subq.customer_id
-    FROM
-     (SELECT customer_id, MIN(subq.diff) AS min_date
-     FROM
-      (SELECT s.*, memb.join_date, order_date - join_date AS diff FROM dannys_diner.sales s
-      JOIN dannys_diner.members memb
-      ON s.customer_id = memb.customer_id
-      WHERE s.order_date - memb.join_date > 0) subq
-      GROUP BY subq.customer_id) grouped_subq
+SELECT m.product_name, top_items.customer_id FROM (SELECT full_subq.product_id, full_subq.customer_id
+FROM
+ (SELECT customer_id, MIN(subq.diff) AS min_date
+ FROM
+  (SELECT s.*, memb.join_date, order_date - join_date AS diff FROM dannys_diner.sales s
+  JOIN dannys_diner.members memb
+  ON s.customer_id = memb.customer_id
+  WHERE s.order_date - memb.join_date > 0) subq
+  GROUP BY subq.customer_id) grouped_subq
     
-    JOIN
+JOIN
     
-    (SELECT s.*, memb.join_date, order_date - join_date AS diff FROM dannys_diner.sales s
-    JOIN dannys_diner.members memb
-    ON s.customer_id = memb.customer_id
-    WHERE s.order_date - memb.join_date > 0) full_subq
-    ON grouped_subq.customer_id = full_subq.customer_id
-    AND grouped_subq.min_date = full_subq.diff) top_items
+(SELECT s.*, memb.join_date, order_date - join_date AS diff FROM dannys_diner.sales s
+JOIN dannys_diner.members memb
+ON s.customer_id = memb.customer_id
+WHERE s.order_date - memb.join_date > 0) full_subq
+ON grouped_subq.customer_id = full_subq.customer_id
+AND grouped_subq.min_date = full_subq.diff) top_items
     
-    JOIN
+JOIN
     
-    dannys_diner.menu m
-    ON m.product_id = top_items.product_id;
+dannys_diner.menu m
+ON m.product_id = top_items.product_id;
 ~~~
 
 | product_name | customer_id |
@@ -113,17 +113,17 @@
 
 ~~~sql
 /* Shorter Query */
-    SELECT subq.diff, m.product_name, subq.customer_id 
-    FROM
-     (SELECT s.*, memb.join_date, order_date - join_date AS diff
-     FROM dannys_diner.sales s
-     JOIN dannys_diner.members memb
-     ON s.customer_id = memb.customer_id
-     WHERE s.order_date - memb.join_date > 0) subq
+SELECT subq.diff, m.product_name, subq.customer_id 
+FROM
+ (SELECT s.*, memb.join_date, order_date - join_date AS diff
+ FROM dannys_diner.sales s
+ JOIN dannys_diner.members memb
+ ON s.customer_id = memb.customer_id
+ WHERE s.order_date - memb.join_date > 0) subq
     
-    JOIN dannys_diner.menu m
-    ON m.product_id = subq.product_id
-    ORDER BY customer_id, diff;
+JOIN dannys_diner.menu m
+ON m.product_id = subq.product_id
+ORDER BY customer_id, diff;
 ~~~
 
 | diff | product_name | customer_id |
@@ -179,17 +179,17 @@ ON m.product_id = top_items.product_id
 
 ~~~sql
 /* Shorter Query */
-    SELECT subq.diff, m.product_name, subq.customer_id
-    FROM
-     (SELECT s.*, memb.join_date, order_date - join_date AS diff 
-     FROM dannys_diner.sales s
-     JOIN dannys_diner.members memb
-     ON s.customer_id = memb.customer_id
-     WHERE s.order_date - memb.join_date < 0) subq
+SELECT subq.diff, m.product_name, subq.customer_id
+FROM
+ (SELECT s.*, memb.join_date, order_date - join_date AS diff 
+ FROM dannys_diner.sales s
+ JOIN dannys_diner.members memb
+ ON s.customer_id = memb.customer_id
+ WHERE s.order_date - memb.join_date < 0) subq
     
-    JOIN dannys_diner.menu m
-    ON m.product_id = subq.product_id
-    ORDER BY customer_id, diff DESC;
+JOIN dannys_diner.menu m
+ON m.product_id = subq.product_id
+ORDER BY customer_id, diff DESC;
 ~~~
 
 | diff | product_name | customer_id |
