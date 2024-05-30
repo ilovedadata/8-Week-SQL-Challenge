@@ -203,21 +203,20 @@ ORDER BY customer_id, diff DESC;
 8. What is the total items and amount spent for each member before they became a member?
 ~~~sql
 # Aggregate on the customer id to sum the quantity and price of the items
-SELECT customer_id, SUM(nr_ordered) AS tot_ordered, 
-SUM(final_answer) AS total_spent
+SELECT customer_id, SUM(nr_ordered) AS tot_ordered, SUM(final_answer) AS total_spent
 FROM
  # Get product name and price
-	(SELECT customer_id, nr_ordered, me.product_id, me.product_name, price, price * nr_ordered AS final_answer
+ (SELECT customer_id, nr_ordered, me.product_id, me.product_name, price, price * nr_ordered AS final_answer
  FROM
   # Get the items ordered by user, only before being a member
-		(SELECT s.customer_id, product_id, COUNT(s.order_date) AS nr_ordered 
-		FROM dannys_diner.sales s
-		JOIN dannys_diner.members m
-		ON m.customer_id = s.customer_id
-		WHERE s.order_date < m.join_date
-		GROUP BY s.customer_id, product_id) nr_order_cust_prod
-	JOIN dannys_diner.menu me 
-	ON me.product_id = nr_order_cust_prod.product_id) final_table
+  (SELECT s.customer_id, product_id, COUNT(s.order_date) AS nr_ordered
+  FROM dannys_diner.sales s
+  JOIN dannys_diner.members m
+  ON m.customer_id = s.customer_id
+  WHERE s.order_date < m.join_date
+  GROUP BY s.customer_id, product_id) nr_order_cust_prod
+  JOIN dannys_diner.menu me
+  ON me.product_id = nr_order_cust_prod.product_id) final_table
 GROUP BY customer_id
 ~~~
 
@@ -230,12 +229,12 @@ GROUP BY customer_id
 ~~~sql
 SELECT customer_id, SUM(points) as nr_points
 FROM
-	# Computing the points
-	(SELECT product_name, price, customer_id,
-	CASE WHEN product_name = 'sushi' THEN price*20 ELSE price*10 END AS points
-	FROM dannys_diner.menu m
-	JOIN dannys_diner.sales s
-	ON m.product_id = s.product_id) points_subq
+ # Computing the points
+ (SELECT product_name, price, customer_id,
+ CASE WHEN product_name = 'sushi' THEN price*20 ELSE price*10 END AS points
+ FROM dannys_diner.menu m
+ JOIN dannys_diner.sales s
+ ON m.product_id = s.product_id) points_subq
 GROUP BY customer_id
 ORDER BY customer_id
 ~~~
@@ -251,27 +250,26 @@ ORDER BY customer_id
 # Group by customer
 SELECT customer_id, SUM(points) AS sum_pts
 FROM
-	# Compute the score
-	(SELECT customer_id, product_name, price, order_date - join_date AS diff, 
-	CASE WHEN order_date - join_date BETWEEN 0 AND 6 THEN price*20 # 0 to 6, not to 7 since you include the join date
-	WHEN product_name = 'sushi' THEN price*20
-	ELSE price*10 END AS points
+ # Compute the score
+ (SELECT customer_id, product_name, price, order_date - join_date AS diff, 
+ CASE WHEN order_date - join_date BETWEEN 0 AND 6 THEN price*20 # 0 to 6, not to 7 since you include the join date
+ WHEN product_name = 'sushi' THEN price*20
+ ELSE price*10 END AS points
  /*CASE WHEN order_date - join_date BETWEEN 0 AND 6 THEN price*20
  WHEN order_date - join_date > 6 AND product_name = 'sushi' THEN price*20
-	WHEN order_date - join_date > 6 AND product_name != 'sushi' THEN price*10
+ WHEN order_date - join_date > 6 AND product_name != 'sushi' THEN price*10
  ELSE 0 END AS points
  # Uncomment this to consider just the orders after the join date*/
-	FROM 
-		# Get the item price
-		(SELECT * FROM
-			(# Get the join date and filter out orders after february
-			SELECT order_date, product_id, s.customer_id, join_date FROM dannys_diner.sales s
-			JOIN dannys_diner.members m
-			ON s.customer_id = m.customer_id
-			WHERE order_date <= '2021-01-31') joindate_subq
-		JOIN
-		dannys_diner.menu me
-		ON me.product_id = joindate_subq.product_id) all_info_subq) grouped_query
+ FROM 
+  # Get the item price
+  (SELECT * FROM
+   (# Get the join date and filter out orders after february
+   SELECT order_date, product_id, s.customer_id, join_date FROM dannys_diner.sales s
+   JOIN dannys_diner.members m
+   ON s.customer_id = m.customer_id
+   WHERE order_date <= '2021-01-31') joindate_subq
+   JOIN dannys_diner.menu me
+   ON me.product_id = joindate_subq.product_id) all_info_subq) grouped_query
 GROUP BY customer_id
 ~~~
 
