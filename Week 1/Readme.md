@@ -201,9 +201,166 @@ ORDER BY customer_id, diff DESC;
 | -8   | curry        | B           |
 
 8. What is the total items and amount spent for each member before they became a member?
+~~~sql
+# Aggregate on the customer id to sum the quantity and price of the items
+SELECT customer_id, SUM(nr_ordered) AS tot_ordered, 
+SUM(final_answer) AS total_spent
+FROM
+ # Get product name and price
+	(SELECT customer_id, nr_ordered, me.product_id, me.product_name, price, price * nr_ordered AS final_answer
+ FROM
+  # Get the items ordered by user, only before being a member
+		(SELECT s.customer_id, product_id, COUNT(s.order_date) AS nr_ordered 
+		FROM dannys_diner.sales s
+		JOIN dannys_diner.members m
+		ON m.customer_id = s.customer_id
+		WHERE s.order_date < m.join_date
+		GROUP BY s.customer_id, product_id) nr_order_cust_prod
+	JOIN dannys_diner.menu me 
+	ON me.product_id = nr_order_cust_prod.product_id) final_table
+GROUP BY customer_id
+~~~
+
+| customer_id | tot_ordered | total_spent |
+| ----------- | ----------- | ----------- |
+| B           | 3           | 40          |
+| A           | 2           | 25          |
+
 9. If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
+~~~sql
+SELECT customer_id, SUM(points) as nr_points
+FROM
+	# Computing the points
+	(SELECT product_name, price, customer_id,
+	CASE WHEN product_name = 'sushi' THEN price*20 ELSE price*10 END AS points
+	FROM dannys_diner.menu m
+	JOIN dannys_diner.sales s
+	ON m.product_id = s.product_id) points_subq
+GROUP BY customer_id
+ORDER BY customer_id
+~~~
+
+| customer_id | nr_points |
+| ----------- | --------- |
+| A           | 860       |
+| B           | 940       |
+| C           | 360       |
+
 10. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+~~~sql
+# Group by customer
+SELECT customer_id, SUM(points) AS sum_pts
+FROM
+	# Compute the score
+	(SELECT customer_id, product_name, price, order_date - join_date AS diff, 
+	CASE WHEN order_date - join_date BETWEEN 0 AND 6 THEN price*20 # 0 to 6, not to 7 since you include the join date
+	WHEN product_name = 'sushi' THEN price*20
+	ELSE price*10 END AS points
+ /*CASE WHEN order_date - join_date BETWEEN 0 AND 6 THEN price*20
+ WHEN order_date - join_date > 6 AND product_name = 'sushi' THEN price*20
+	WHEN order_date - join_date > 6 AND product_name != 'sushi' THEN price*10
+ ELSE 0 END AS points
+ # Uncomment this to consider just the orders after the join date*/
+	FROM 
+		# Get the item price
+		(SELECT * FROM
+			(# Get the join date and filter out orders after february
+			SELECT order_date, product_id, s.customer_id, join_date FROM dannys_diner.sales s
+			JOIN dannys_diner.members m
+			ON s.customer_id = m.customer_id
+			WHERE order_date <= '2021-01-31') joindate_subq
+		JOIN
+		dannys_diner.menu me
+		ON me.product_id = joindate_subq.product_id) all_info_subq) grouped_query
+GROUP BY customer_id
+~~~
+
+| customer_id | sum_pts |
+| ----------- | ------- |
+| A           | 1370    |
+| B           | 820     |
 
 ### Bonus Questions
 1. Join all the things
+~~~sql
+SELECT customer_id, order_date, product_name, price, CASE WHEN customer_id_to_drop IS NULL THEN 'N'
+WHEN order_date < join_date THEN 'N' ELSE 'Y' END AS member
+FROM
+ (SELECT * 
+ FROM dannys_diner.sales sa   
+ JOIN dannys_diner.menu me
+ ON sa.product_id = me.product_id
+ LEFT JOIN 
+ (SELECT customer_id AS customer_id_to_drop, join_date 
+ FROM dannys_diner.members mem) mem
+ ON sa.customer_id=mem.customer_id_to_drop) all_info_subq
+ORDER BY customer_id, order_date;
+~~~
+
+| customer_id | order_date               | product_name | price | member |
+| ----------- | ------------------------ | ------------ | ----- | ------ |
+| A           | 2021-01-01T00:00:00.000Z | sushi        | 10    | N      |
+| A           | 2021-01-01T00:00:00.000Z | curry        | 15    | N      |
+| A           | 2021-01-07T00:00:00.000Z | curry        | 15    | Y      |
+| A           | 2021-01-10T00:00:00.000Z | ramen        | 12    | Y      |
+| A           | 2021-01-11T00:00:00.000Z | ramen        | 12    | Y      |
+| A           | 2021-01-11T00:00:00.000Z | ramen        | 12    | Y      |
+| B           | 2021-01-01T00:00:00.000Z | curry        | 15    | N      |
+| B           | 2021-01-02T00:00:00.000Z | curry        | 15    | N      |
+| B           | 2021-01-04T00:00:00.000Z | sushi        | 10    | N      |
+| B           | 2021-01-11T00:00:00.000Z | sushi        | 10    | Y      |
+| B           | 2021-01-16T00:00:00.000Z | ramen        | 12    | Y      |
+| B           | 2021-02-01T00:00:00.000Z | ramen        | 12    | Y      |
+| C           | 2021-01-01T00:00:00.000Z | ramen        | 12    | N      |
+| C           | 2021-01-01T00:00:00.000Z | ramen        | 12    | N      |
+| C           | 2021-01-07T00:00:00.000Z | ramen        | 12    | N      |
+
 2. Rank all the things
+~~~sql
+# The following temp table was created to answer the question Bonus2
+CREATE TEMP TABLE first_bonus AS   
+ (SELECT customer_id, order_date, product_name, price, ROW_NUMBER() OVER(ORDER BY order_date) AS row_nr,
+ CASE WHEN customer_id_to_drop IS NULL THEN 'N' WHEN order_date < join_date THEN 'N' ELSE 'Y' END AS member
+ FROM
+ (SELECT * 
+ FROM dannys_diner.sales sa  
+ JOIN dannys_diner.menu me
+ ON sa.product_id = me.product_id  
+ LEFT JOIN 
+ (SELECT customer_id AS customer_id_to_drop, join_date FROM dannys_diner.members mem) mem
+ ON sa.customer_id=mem.customer_id_to_drop) all_info_subq    
+ORDER BY customer_id, order_date);
+~~~
+~~~sql
+SELECT customer_id, order_date, product_name, price, member, ranking
+FROM   
+ (SELECT * 
+ FROM first_bonus fb   
+ LEFT JOIN
+ (SELECT customer_id AS customer_id_to_drop, row_nr AS row_nr_to_drop, order_date AS order_date_to_drop,
+ RANK() OVER (PARTITION BY customer_id ORDER BY order_date) AS ranking
+ FROM first_bonus
+ WHERE member = 'Y') ranked_subq
+ ON ranked_subq.customer_id_to_drop = fb.customer_id
+ AND ranked_subq.order_date_to_drop = fb.order_date
+ AND ranked_subq.row_nr_to_drop = fb.row_nr) all_info_subq
+ORDER BY customer_id, order_date;
+~~~
+
+| customer_id | order_date               | product_name | price | member | ranking |
+| ----------- | ------------------------ | ------------ | ----- | ------ | ------- |
+| A           | 2021-01-01T00:00:00.000Z | curry        | 15    | N      |         |
+| A           | 2021-01-01T00:00:00.000Z | sushi        | 10    | N      |         |
+| A           | 2021-01-07T00:00:00.000Z | curry        | 15    | Y      | 1       |
+| A           | 2021-01-10T00:00:00.000Z | ramen        | 12    | Y      | 2       |
+| A           | 2021-01-11T00:00:00.000Z | ramen        | 12    | Y      | 3       |
+| A           | 2021-01-11T00:00:00.000Z | ramen        | 12    | Y      | 3       |
+| B           | 2021-01-01T00:00:00.000Z | curry        | 15    | N      |         |
+| B           | 2021-01-02T00:00:00.000Z | curry        | 15    | N      |         |
+| B           | 2021-01-04T00:00:00.000Z | sushi        | 10    | N      |         |
+| B           | 2021-01-11T00:00:00.000Z | sushi        | 10    | Y      | 1       |
+| B           | 2021-01-16T00:00:00.000Z | ramen        | 12    | Y      | 2       |
+| B           | 2021-02-01T00:00:00.000Z | ramen        | 12    | Y      | 3       |
+| C           | 2021-01-01T00:00:00.000Z | ramen        | 12    | N      |         |
+| C           | 2021-01-01T00:00:00.000Z | ramen        | 12    | N      |         |
+| C           | 2021-01-07T00:00:00.000Z | ramen        | 12    | N      |         |
