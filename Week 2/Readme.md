@@ -243,3 +243,157 @@ ORDER BY dow;
 | 4   | 3           | 21.4 |
 | 5   | 1           | 7.1  |
 | 6   | 5           | 35.7 |
+
+### B. Runner and Customer Experience
+
+1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+~~~sql
+SELECT COUNT(runner_id) AS runners_registered, week_nr
+FROM
+ (SELECT *, EXTRACT(WEEK FROM registration_date) AS week_nr
+ FROM pizza_runner.runners) week_nr_query
+GROUP BY week_nr;
+~~~
+
+| runners_registered | week_nr |
+| ------------------ | ------- |
+| 2                  | 53      |
+| 1                  | 1       |
+| 1                  | 2       |
+
+2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+~~~sql
+SELECT runner_id, AVG(delta_time) AS avg_time 
+FROM
+ (SELECT runner_id, pickup_time_ts - order_time AS delta_time
+ FROM customers_cleaned
+ JOIN runners_cleaned
+ ON customers_cleaned.order_id = runners_cleaned.order_id
+ WHERE cancellation IS NULL) delta_time_query        
+GROUP BY runner_id
+ORDER BY runner_id
+~~~
+
+| runner_id | avg_time        |
+| --------- | --------------- |
+| 1         | {"minutes":15,"seconds":40,"milliseconds":666.667} |
+| 2         | {"minutes":23,"seconds":43,"milliseconds":200} |
+| 3         | {"minutes":10,"seconds":28} |
+
+3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
+~~~sql
+# Customers cleaned modified as follows to avoid the redundancy of the order_id column
+CREATE TEMP TABLE customers_cleaned AS 
+ (SELECT order_id AS order_id_2, customer_id, pizza_id,
+ CASE WHEN exclusions IS NULL or exclusions='null' or exclusions = ' ' 
+ or exclusions = '' THEN NULL
+ ELSE exclusions END AS exclusions,
+ CASE WHEN extras IS NULL or extras='null' or extras = ' ' or extras = '' 
+ THEN NULL
+ ELSE extras END AS extras,
+ order_time
+ FROM pizza_runner.customer_orders); 
+~~~
+~~~sql
+SELECT nr_pizza, AVG(proxy_time)
+FROM
+ # Get the time spent per order. N.W.: MAX is  a quick way to get a unique value per order 
+ (SELECT COUNT(pizza_id) AS nr_pizza, MAX(delta_time) AS proxy_time FROM
+  # compute the delta time
+  (SELECT *, pickup_time_ts - order_time AS delta_time
+  FROM customers_cleaned
+  JOIN runners_cleaned
+  ON customers_cleaned.order_id_2 = runners_cleaned.order_id
+  WHERE cancellation IS NULL) delta_time_query       
+ GROUP BY order_id) nr_pizza_query
+GROUP BY nr_pizza
+ORDER BY nr_pizza;
+~~~
+
+| nr_pizza | avg             |
+| -------- | --------------- |
+| 1        | {"minutes":12,"seconds":21,"milliseconds":400} |
+| 2        | {"minutes":18,"seconds":22,"milliseconds":500} |
+| 3        | {"minutes":29,"seconds":17} |
+
+4. What was the average distance travelled for each customer?
+~~~sql
+SELECT customer_id, ROUND(AVG(distance_km)) AS avg_distance
+FROM customers_cleaned
+JOIN runners_cleaned
+ON customers_cleaned.order_id_2 = runners_cleaned.order_id
+WHERE cancellation IS NULL
+GROUP BY customer_id
+ORDER BY customer_id;
+~~~
+
+| customer_id | avg_distance |
+| ----------- | ------------ |
+| 101         | 20           |
+| 102         | 17           |
+| 103         | 23           |
+| 104         | 10           |
+| 105         | 25           |
+
+5. What was the difference between the longest and shortest delivery times for all orders?
+~~~sql
+SELECT MAX(duration_min) - MIN(duration_min) AS delta_duration
+FROM customers_cleaned
+JOIN runners_cleaned
+ON customers_cleaned.order_id_2 = runners_cleaned.order_id
+WHERE cancellation IS NULL;
+~~~
+
+| delta_duration |
+| -------------- |
+| 30             |
+
+6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
+~~~sql
+# AGAIN, I used max but you could use MIN, AVG: the speed is constant for a given order
+# The trend one might spot is that the later the order comes, the quicker the runner is. This is especially true for runner number 2.
+SELECT runner_id, order_id, ROUND(MAX(speed_metersseconds)) avg_speed
+FROM 
+ (SELECT runner_id, order_id, (distance_km*1000)/(duration_min*60) AS speed_metersseconds 
+ FROM customers_cleaned
+ JOIN runners_cleaned
+ ON customers_cleaned.order_id_2 = runners_cleaned.order_id
+ WHERE cancellation IS NULL) speed_query
+GROUP BY runner_id, order_id
+ORDER BY runner_id, order_id
+~~~
+
+| runner_id | order_id | avg_speed |
+| --------- | -------- | --------- |
+| 1         | 1        | 10        |
+| 1         | 2        | 12        |
+| 1         | 3        | 11        |
+| 1         | 10       | 17        |
+| 2         | 4        | 10        |
+| 2         | 7        | 17        |
+| 2         | 8        | 26        |
+| 3         | 5        | 11        |
+
+7. What is the successful delivery percentage for each runner?Cleaning stuff: cleaning data and data engineering
+~~~sql
+SELECT runner_id, CAST(succesful AS FLOAT)/(CAST(succesful AS FLOAT) + CAST(notso AS FLOAT)) AS pct_success
+FROM
+ # Get the succesful and not succesful orders
+ (SELECT runner_id,
+ COUNT(CASE WHEN cancellation IS NULL THEN 1 ELSE NULL END) AS succesful,
+ COUNT(CASE WHEN cancellation IS NOT NULL THEN 1 ELSE NULL END) AS notso
+ FROM
+  (# Get distinct order id, runner_id and cancellation
+  SELECT DISTINCT order_id, runner_id, cancellation 
+  FROM customers_cleaned
+  JOIN runners_cleaned
+  ON customers_cleaned.order_id_2 = runners_cleaned.order_id) distinct_query
+ GROUP BY runner_id
+ ORDER BY runner_id) succ_not_query
+~~~
+
+| runner_id | pct_success |
+| --------- | ----------- |
+| 1         | 1           |
+| 2         | 0.75        |
+| 3         | 0.5         |
