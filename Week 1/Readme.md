@@ -140,13 +140,13 @@ ORDER BY customer_id, diff;
 # Getting the product name and the associated customer_id
 SELECT product_name, customer_id, order_date
 FROM
- (# Getting the product_id by self-joining the subq
- SELECT * FROM
-  (# Getting the customer_id with its max diff, i.e. the one that is closest to 0
-  SELECT customer_id, MAX(subq.diff) as max_diff
+ # Getting the product_id by self-joining the subq
+ (SELECT * FROM
+  # Getting the customer_id with its max diff, i.e. the one that is closest to 0
+  (SELECT customer_id, MAX(subq.diff) as max_diff
   FROM
-   (# getting the diff
-   SELECT s.*, memb.join_date, order_date - join_date AS diff 
+   # getting the diff
+   (SELECT s.*, memb.join_date, order_date - join_date AS diff 
    FROM dannys_diner.sales s
    JOIN dannys_diner.members memb
    ON s.customer_id = memb.customer_id
@@ -263,8 +263,8 @@ FROM
  FROM 
   # Get the item price
   (SELECT * FROM
-   (# Get the join date and filter out orders after february
-   SELECT order_date, product_id, s.customer_id, join_date FROM dannys_diner.sales s
+   # Get the join date and filter out orders after february
+   (SELECT order_date, product_id, s.customer_id, join_date FROM dannys_diner.sales s
    JOIN dannys_diner.members m
    ON s.customer_id = m.customer_id
    WHERE order_date <= '2021-01-31') joindate_subq
