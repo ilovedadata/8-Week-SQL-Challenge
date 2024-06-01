@@ -383,8 +383,8 @@ FROM
  COUNT(CASE WHEN cancellation IS NULL THEN 1 ELSE NULL END) AS succesful,
  COUNT(CASE WHEN cancellation IS NOT NULL THEN 1 ELSE NULL END) AS notso
  FROM
-  (# Get distinct order id, runner_id and cancellation
-  SELECT DISTINCT order_id, runner_id, cancellation 
+  # Get distinct order id, runner_id and cancellation
+  (SELECT DISTINCT order_id, runner_id, cancellation 
   FROM customers_cleaned
   JOIN runners_cleaned
   ON customers_cleaned.order_id_2 = runners_cleaned.order_id) distinct_query
