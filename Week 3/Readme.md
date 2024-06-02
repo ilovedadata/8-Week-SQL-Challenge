@@ -460,3 +460,19 @@ LIMIT 32
 | 17          | 1       | basic monthly | 2020-11-03T00:00:00.000Z | 9.90   | 4             |
 | 17          | 1       | basic monthly | 2020-12-03T00:00:00.000Z | 9.90   | 5             |
 | 17          | 3       | pro annual    | 2020-12-11T00:00:00.000Z | 189.10 | 6             |
+
+### D. Outside The Box Questions
+- How would you calculate the rate of growth for Foodie-Fi?
+Number of customers at the end of a given period / Number of customers at the end of the previous period - 1. Ex: 120 / 100 - 1 = 20% growth
+
+- What key metrics would you recommend Foodie-Fi management to track over time to assess performance of their overall business? %Type of plans over total plans (is there a more lucrative plan? If so, put particular attention in tracking the number of customers subscribed to it), churn rate, growth rate.
+
+- What are some key customer journeys or experiences that you would analyse further to improve customer retention? Check which is the plan customers subscribed to before churning, track the journeys of satisfied customers, track the journeys of the customers subscribed to the plan you would like all customers to be subscribed to
+
+- If the Foodie-Fi team were to create an exit survey shown to customers who wish to cancel their subscription, what questions would you include in the survey?
+1- Explain the main issue with your plan that led you to unsubscribe from our services
+2- How would you rate your experience with us? 3-How can we improve our service?
+
+- What business levers could the Foodie-Fi team use to reduce the customer churn rate? How would you validate the effectiveness of your ideas? -Improve the customer service;
+1. Identify the customers who are at risk of churning (through predictive modelling or by considering custoemrs that are taking the same steps of customers who churned already);
+2. Validate so by analyzing Growth rate and churn rate.
