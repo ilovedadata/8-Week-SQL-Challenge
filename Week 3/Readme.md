@@ -299,3 +299,164 @@ The Foodie-Fi team wants you to create a new payments table for the year 2020 th
 - upgrades from basic to monthly or pro plans are reduced by the current paid amount in that month and start immediately
 - upgrades from pro monthly to pro annual are paid at the end of the current billing period and also starts at the end of the month period
 - once a customer churns they will no longer make payments
+
+~~~sql
+# Get the first plan change
+CREATE TEMP TABLE first_change AS
+ (SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, EXTRACT(MONTH FROM AGE(start_date_2, start_date_1)) AS delta_months, plan_name_1, plan_name_2
+ FROM all_subscr_info_on_rows
+ WHERE plan_id_2 IS NOT NULL);
+
+# Get the second plan change
+CREATE TEMP TABLE second_change AS
+(SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, EXTRACT(MONTH FROM AGE(start_date_3, start_date_2)) AS delta_months,  plan_name_2, plan_name_3
+ FROM all_subscr_info_on_rows
+ WHERE plan_id_3 IS NOT NULL);
+
+/*# This is empty: there are no third changes: the rank is at most 3
+CREATE TEMP TABLE third_change AS
+(SELECT customer_id, plan_id_3, plan_id_4, start_date_3, start_date_4, EXTRACT(MONTH FROM AGE(start_date_4, start_date_3)) AS delta_months, plan_name_3, plan_name_4
+ FROM all_subscr_info_on_rows
+ WHERE plan_id_4 IS NOT NULL);*/
+
+# At most, you have 12 months rolling of delta: here you compute it on the second delta
+CREATE TEMP TABLE second_change_all_info AS
+ (SELECT *, start_date_2 + delta_months * INTERVAL '1 month' AS new_date 
+ FROM
+  (SELECT * FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 1 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 2 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 3 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 4 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 5 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 6 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 7 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 8 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 9 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 10 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 11 AS delta_months, plan_name_2, plan_name_3 FROM second_change
+  UNION ALL
+  SELECT customer_id, plan_id_2, plan_id_3, start_date_2, start_date_3, delta_months - 12 AS delta_months, plan_name_2, plan_name_3 FROM second_change) all_second_delta
+ WHERE delta_months >= 1
+ ORDER BY customer_id, delta_months * INTERVAL '1 month');
+
+# AT most, you have 12 months rolling of delta: here you compute it on the first delta
+CREATE TEMP TABLE first_change_all_info AS
+ (SELECT *, start_date_1 + delta_months * INTERVAL '1 month' AS new_date 
+  FROM
+  (SELECT * FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 1 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 2 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 3 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 4 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 5 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 6 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 7 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 8 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 9 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 10 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 11 AS delta_months, plan_name_1, plan_name_2 FROM first_change
+  UNION ALL
+  SELECT customer_id, plan_id_1, plan_id_2, start_date_1, start_date_2, delta_months - 12 AS delta_months, plan_name_1, plan_name_2 FROM first_change) all_first_delta
+ WHERE delta_months >= 1
+ ORDER BY customer_id, delta_months * INTERVAL '1 month');
+
+/* The lagged rows are needed to impose the following condition, which computes the correct amount paid by each customer in case he/she switches plans in the middle of a month*/
+SELECT customer_id, plan_id, plan_name, payment_date, 
+CASE WHEN (lagged_plan_name = 'basic monthly' AND (plan_name = 'pro monthly' OR plan_name = 'pro annual') AND customer_id = lagged_customer AND
+EXTRACT(MONTH FROM AGE(payment_date, lagged_payment_date)) = 0) THEN amount - lagged_amount ELSE amount END AS amount, ROW_NUMBER() OVER(PARTITION BY customer_id) AS payment_order
+FROM
+ (SELECT *, 
+ LAG(customer_id, 1) OVER() AS lagged_customer,
+ LAG(plan_name, 1) OVER() AS lagged_plan_name,
+ LAG(amount, 1) OVER() AS lagged_amount,
+ LAG(payment_date, 1) OVER() AS lagged_payment_date
+ FROM
+  (SELECT DISTINCT customer_id, plan_id, plan_name, payment_date, price AS amount
+  FROM
+   (SELECT customer_id, plan_id_2 AS plan_id, plan_name_2 AS plan_name, new_date AS payment_date
+   FROM
+    (SELECT * FROM second_change_all_info 
+    # if new_date is = to start_date_3, keep on using start_date_3
+    WHERE new_date != start_date_3) no_duplicated_dates
+   UNION ALL
+   SELECT customer_id, plan_id_1 AS plan_id, plan_name_1 AS plan_name, new_date AS payment_date
+   FROM
+    (SELECT * FROM first_change_all_info 
+    # if new_date is = to start_date_2, keep on using start_date_2
+    WHERE new_date != start_date_2) no_duplicated_dates_first
+   UNION ALL
+   # Get rows which were skipped by the queries above. 
+   SELECT customer_id, plan_id, plan_name, start_date AS payment_date 
+   FROM
+    (SELECT * FROM foodie_fi.subscriptions s
+    JOIN
+    # Needed to get the plan_name, in order to append rows properly
+    foodie_fi.plans p
+    USING (plan_id)
+    WHERE start_date BETWEEN '2020-01-01' AND '2020-12-31' AND
+    plan_id != 0 AND plan_id != 4) get_first_rows) all_rows_appended
+   JOIN
+   # Get the price of the plans
+   (SELECT plan_id, price FROM foodie_fi.plans) foodie_prices
+   USING(plan_id)
+  ORDER BY customer_id, payment_date) all_info_but_prices) all_info_w_prices
+LIMIT 32
+~~~
+
+| customer_id | plan_id | plan_name     | payment_date             | amount | payment_order |
+| ----------- | ------- | ------------- | ------------------------ | ------ | ------------- |
+| 1           | 1       | basic monthly | 2020-08-08T00:00:00.000Z | 9.90   | 1             |
+| 2           | 3       | pro annual    | 2020-09-27T00:00:00.000Z | 199.00 | 1             |
+| 3           | 1       | basic monthly | 2020-01-20T00:00:00.000Z | 9.90   | 1             |
+| 4           | 1       | basic monthly | 2020-01-24T00:00:00.000Z | 9.90   | 1             |
+| 5           | 1       | basic monthly | 2020-08-10T00:00:00.000Z | 9.90   | 1             |
+| 6           | 1       | basic monthly | 2020-12-30T00:00:00.000Z | 9.90   | 1             |
+| 7           | 1       | basic monthly | 2020-02-12T00:00:00.000Z | 9.90   | 1             |
+| 7           | 1       | basic monthly | 2020-03-12T00:00:00.000Z | 9.90   | 2             |
+| 7           | 1       | basic monthly | 2020-04-12T00:00:00.000Z | 9.90   | 3             |
+| 7           | 1       | basic monthly | 2020-05-12T00:00:00.000Z | 9.90   | 4             |
+| 7           | 2       | pro monthly   | 2020-05-22T00:00:00.000Z | 10.00  | 5             |
+| 8           | 1       | basic monthly | 2020-06-18T00:00:00.000Z | 9.90   | 1             |
+| 8           | 1       | basic monthly | 2020-07-18T00:00:00.000Z | 9.90   | 2             |
+| 8           | 2       | pro monthly   | 2020-08-03T00:00:00.000Z | 10.00  | 3             |
+| 9           | 3       | pro annual    | 2020-12-14T00:00:00.000Z | 199.00 | 1             |
+| 10          | 2       | pro monthly   | 2020-09-26T00:00:00.000Z | 19.90  | 1             |
+| 12          | 1       | basic monthly | 2020-09-29T00:00:00.000Z | 9.90   | 1             |
+| 13          | 1       | basic monthly | 2020-12-22T00:00:00.000Z | 9.90   | 1             |
+| 14          | 1       | basic monthly | 2020-09-29T00:00:00.000Z | 9.90   | 1             |
+| 15          | 2       | pro monthly   | 2020-03-24T00:00:00.000Z | 19.90  | 1             |
+| 16          | 1       | basic monthly | 2020-06-07T00:00:00.000Z | 9.90   | 1             |
+| 16          | 1       | basic monthly | 2020-07-07T00:00:00.000Z | 9.90   | 2             |
+| 16          | 1       | basic monthly | 2020-08-07T00:00:00.000Z | 9.90   | 3             |
+| 16          | 1       | basic monthly | 2020-09-07T00:00:00.000Z | 9.90   | 4             |
+| 16          | 1       | basic monthly | 2020-10-07T00:00:00.000Z | 9.90   | 5             |
+| 16          | 3       | pro annual    | 2020-10-21T00:00:00.000Z | 189.10 | 6             |
+| 17          | 1       | basic monthly | 2020-08-03T00:00:00.000Z | 9.90   | 1             |
+| 17          | 1       | basic monthly | 2020-09-03T00:00:00.000Z | 9.90   | 2             |
+| 17          | 1       | basic monthly | 2020-10-03T00:00:00.000Z | 9.90   | 3             |
+| 17          | 1       | basic monthly | 2020-11-03T00:00:00.000Z | 9.90   | 4             |
+| 17          | 1       | basic monthly | 2020-12-03T00:00:00.000Z | 9.90   | 5             |
+| 17          | 3       | pro annual    | 2020-12-11T00:00:00.000Z | 189.10 | 6             |
