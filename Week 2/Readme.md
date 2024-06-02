@@ -401,58 +401,58 @@ FROM
 ### C. Ingredient Optimisation
 
 0. Tables that were created to answer to the following questions:
-CREATE TEMP TABLE toppings_cleaned AS 
 ~~~sql
 # GOAL: for each pizza, get multiple rows telling you which topping was added on top of it 
-(SELECT pizza_id, CAST(topping_id AS INTEGER) FROM
+CREATE TEMP TABLE toppings_cleaned AS 
+ (SELECT pizza_id, CAST(topping_id AS INTEGER) FROM
 
-(SELECT pizza_id,
-SPLIT_PART(toppings, ',', 1) AS topping_id
-FROM pizza_runner.pizza_recipes
+ (SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 1) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 2) AS topping_id
-FROM pizza_runner.pizza_recipes
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 2) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 3) AS topping_id
-FROM pizza_runner.pizza_recipes
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 3) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 4) AS topping_id
-FROM pizza_runner.pizza_recipes
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 4) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 5) AS topping_id
-FROM pizza_runner.pizza_recipes
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 5) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 6) AS topping_id
-FROM pizza_runner.pizza_recipes
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 6) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 7) AS topping_id
-FROM pizza_runner.pizza_recipes
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 7) AS topping_id
+ FROM pizza_runner.pizza_recipes
 
-UNION ALL
+ UNION ALL
 
-SELECT pizza_id,
-SPLIT_PART(toppings, ',', 8) AS topping_id
-FROM pizza_runner.pizza_recipes) toppings_subq
+ SELECT pizza_id,
+ SPLIT_PART(toppings, ',', 8) AS topping_id
+ FROM pizza_runner.pizza_recipes) toppings_subq
 
-WHERE LENGTH(topping_id) > 0);
+ WHERE LENGTH(topping_id) > 0);
 ~~~
 
 | pizza_id | topping_id |
