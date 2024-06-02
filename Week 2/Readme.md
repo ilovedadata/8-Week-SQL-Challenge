@@ -887,11 +887,11 @@ FROM
    FROM all_info_prices
    GROUP BY order_id_to_drop) pzz_price_subq
   ON pzz_price_subq.order_id_to_drop = runner_pay_subq.order_id_2) all_info_subq) final_subq;
+~~~
 
 | money_made |
 | ---------- |
 | 94.44      |
-~~~
 
 ### E. Bonus Questions
 If Danny wants to expand his range of pizzas - how would this impact the existing data design? Write an INSERT statement to demonstrate what would happen if a new Supreme pizza with all the toppings was added to the Pizza Runner menu?
