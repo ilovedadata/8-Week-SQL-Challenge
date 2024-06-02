@@ -895,8 +895,8 @@ FROM
 
 ### E. Bonus Questions
 If Danny wants to expand his range of pizzas - how would this impact the existing data design? Write an INSERT statement to demonstrate what would happen if a new Supreme pizza with all the toppings was added to the Pizza Runner menu?
-# It would not impact the existing db significantly. It is enough to insert a new pizza_id and pizza_name in pizza_runner.pizza_names
 ~~~sql
+# It would not impact the existing db significantly. It is enough to insert a new pizza_id and pizza_name in pizza_runner.pizza_names
 INSERT INTO pizza_runner.pizza_names
   ("pizza_id", "pizza_name")
 VALUES
