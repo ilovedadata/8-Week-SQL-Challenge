@@ -236,9 +236,55 @@ GROUP BY product_category;
 Use your 2 new output tables - answer the following questions:
 1. Which product had the most views, cart adds and purchases?
 Oyster, Lobster, Lobster
+~~~sql
+SELECT page_name, SUM(times_viewed) AS tot_view
+FROM all_things_products
+GROUP BY page_name
+ORDER BY tot_view DESC
+LIMIT 1;
+~~~
+| page_name | tot_view |
+| --------- | -------- |
+| Oyster    | 1568     |
+
+~~~sql
+SELECT page_name, SUM(times_added_to_cart) AS tot_a2c
+FROM all_things_products
+GROUP BY page_name
+ORDER BY tot_a2c DESC
+LIMIT 1;
+~~~
+| page_name | tot_a2c |
+| --------- | ------- |
+| Lobster   | 968     |
+
+~~~sql
+SELECT page_name, SUM(cartadd_purchases) AS tot_purch
+FROM all_things_products
+GROUP BY page_name
+ORDER BY tot_purch DESC
+LIMIT 1;
+~~~
+| page_name | tot_purch |
+| --------- | --------- |
+| Lobster   | 754       |
+
 2. Which product was most likely to be abandoned?
 Russian Caviar
-3. Which product had the highest view to purchase percentage?
+~~~sql
+SELECT page_name, SUM(cartadd_purchases) AS tot_purch,
+SUM(times_added_to_cart) AS tot_a2c, 
+ROUND(100.0*SUM(cartadd_purchases)/SUM(times_added_to_cart)) AS pct_bought
+FROM all_things_products
+GROUP BY page_name
+ORDER BY pct_bought 
+LIMIT 1;
+~~~
+| page_name      | tot_purch | tot_a2c | pct_bought |
+| -------------- | --------- | ------- | ---------- |
+| Russian Caviar | 697       | 946     | 74         |
+
+4. Which product had the highest view to purchase percentage?
 ~~~sql
 SELECT page_name, product_category, 
 ROUND(100.0*cartadd_purchases/times_viewed, 1) AS pct_purch_view
@@ -275,3 +321,70 @@ FROM clique_bait.users;
 | count_of_user |
 | ------------- |
 | 500           |
+
+### 3. Campaigns Analysis
+~~~sql
+CREATE TEMP TABLE row_numb_events AS
+ (SELECT *, ROW_NUMBER() OVER(PARTITION BY visit_id ORDER BY visit_id, event_time)
+ FROM clique_bait.events 
+ JOIN clique_bait.page_hierarchy USING(page_id)
+ WHERE event_type = 2);
+~~~
+~~~sql
+CREATE TEMP TABLE concatenated_purchases AS
+ (SELECT visit_id, cart_products FROM
+  (SELECT visit_id, 
+  CONCAT(page_name,',',page_name_2,',',page_name_3,',',page_name_4,',',page_name_5,',',page_name_6,',',page_name_7,',',page_name_8,',',page_name_9) AS cart_products, ROW_NUMBER() OVER(PARTITION BY visit_id ORDER BY visit_id)     
+  FROM
+   (SELECT *, 
+   LEAD(page_name, 1) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_2,
+   LEAD(page_name, 2) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_3,
+   LEAD(page_name, 3) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_4,
+   LEAD(page_name, 4) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_5,
+   LEAD(page_name, 5) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_6,
+   LEAD(page_name, 6) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_7,
+   LEAD(page_name, 7) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_8,
+   LEAD(page_name, 8) OVER(PARTITION BY visit_id ORDER BY visit_id, event_time) AS page_name_9
+   FROM row_numb_events) leads_subq) all_num_rows_subq
+  WHERE row_number=1);
+~~~
+~~~sql
+SELECT *, 
+CASE WHEN visit_start_time BETWEEN (SELECT start_date FROM clique_bait.campaign_identifier WHERE campaign_id = 1) AND (SELECT end_date FROM clique_bait.campaign_identifier WHERE campaign_id = 1) THEN (SELECT campaign_name FROM clique_bait.campaign_identifier WHERE campaign_id = 1) WHEN visit_start_time BETWEEN (SELECT start_date FROM clique_bait.campaign_identifier WHERE campaign_id = 2) AND (SELECT end_date FROM clique_bait.campaign_identifier WHERE campaign_id = 2) THEN (SELECT campaign_name FROM clique_bait.campaign_identifier WHERE campaign_id = 2) WHEN visit_start_time BETWEEN (SELECT start_date FROM clique_bait.campaign_identifier WHERE campaign_id = 3) AND (SELECT end_date FROM clique_bait.campaign_identifier WHERE campaign_id = 3) THEN (SELECT campaign_name FROM clique_bait.campaign_identifier WHERE campaign_id = 3) ELSE NULL END AS campaign_name
+FROM
+ (SELECT visit_id, 
+ MIN(event_time) AS visit_start_time, 
+ COUNT(CASE WHEN event_type = 1 THEN 1 ELSE NULL END) AS page_views,
+ COUNT(CASE WHEN event_type = 2 THEN 1 ELSE NULL END) AS cart_adds,
+ MAX(CASE WHEN event_type = 3 THEN 1 ELSE 0 END) AS purchase,
+ COUNT(CASE WHEN event_type = 4 THEN 1 ELSE NULL END) AS impression,
+ COUNT(CASE WHEN event_type = 5 THEN 1 ELSE NULL END) AS click
+ FROM clique_bait.events 
+ GROUP BY visit_id) all_but_user_subq   
+
+JOIN
+ (SELECT DISTINCT visit_id, user_id
+ FROM
+  (SELECT visit_id, cookie_id FROM clique_bait.events) e
+  JOIN clique_bait.users
+  USING(cookie_id)) user_subq
+USING(visit_id)   
+
+LEFT JOIN 
+ (SELECT visit_id, cart_products FROM concatenated_purchases) just_first_row_purch
+USING(visit_id)
+ORDER BY user_id, visit_id
+LIMIT 10;
+~~~
+| visit_id | visit_start_time         | page_views | cart_adds | purchase | impression | click | user_id | cart_products                                                         | campaign_name                     |
+| -------- | ------------------------ | ---------- | --------- | -------- | ---------- | ----- | ------- | --------------------------------------------------------------------- | --------------------------------- |
+| 02a5d5   | 2020-02-26T16:57:26.260Z | 4          | 0         | 0        | 0          | 0     | 1       |                                                                       | Half Off - Treat Your Shellf(ish) |
+| 0826dc   | 2020-02-26T05:58:37.918Z | 1          | 0         | 0        | 0          | 0     | 1       |                                                                       | Half Off - Treat Your Shellf(ish) |
+| 0fc437   | 2020-02-04T17:49:49.602Z | 10         | 6         | 1        | 1          | 1     | 1       | Tuna,Russian Caviar,Black Truffle,Abalone,Crab,Oyster,,,              | Half Off - Treat Your Shellf(ish) |
+| 30b94d   | 2020-03-15T13:12:54.023Z | 9          | 7         | 1        | 1          | 1     | 1       | Salmon,Kingfish,Tuna,Russian Caviar,Abalone,Lobster,Crab,,            | Half Off - Treat Your Shellf(ish) |
+| 41355d   | 2020-03-25T00:11:17.860Z | 6          | 1         | 0        | 0          | 0     | 1       | Lobster,,,,,,,,                                                       | Half Off - Treat Your Shellf(ish) |
+| ccf365   | 2020-02-04T19:16:09.182Z | 7          | 3         | 1        | 0          | 0     | 1       | Lobster,Crab,Oyster,,,,,,                                             | Half Off - Treat Your Shellf(ish) |
+| eaffde   | 2020-03-25T20:06:32.342Z | 10         | 8         | 1        | 1          | 1     | 1       | Salmon,Tuna,Russian Caviar,Black Truffle,Abalone,Lobster,Crab,Oyster, | Half Off - Treat Your Shellf(ish) |
+| f7c798   | 2020-03-15T02:23:26.312Z | 9          | 3         | 1        | 0          | 0     | 1       | Russian Caviar,Crab,Oyster,,,,,,                                      | Half Off - Treat Your Shellf(ish) |
+| 0635fb   | 2020-02-16T06:42:42.735Z | 9          | 4         | 1        | 0          | 0     | 2       | Salmon,Kingfish,Abalone,Crab,,,,,                                     | Half Off - Treat Your Shellf(ish) |
+| 1f1198   | 2020-02-01T21:51:55.078Z | 1          | 0         | 0        | 0          | 0     | 2       |                                                                       | Half Off - Treat Your Shellf(ish) |
