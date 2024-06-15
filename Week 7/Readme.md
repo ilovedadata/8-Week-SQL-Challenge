@@ -63,9 +63,7 @@ FROM
  FROM balanced_tree.sales 
  GROUP BY prod_id) disc_subq
 
-JOIN
-    
-balanced_tree.product_details 
+JOIN balanced_tree.product_details 
 USING(product_id)
 ORDER BY product_name;
 ~~~
