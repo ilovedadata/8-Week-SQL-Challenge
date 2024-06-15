@@ -54,8 +54,7 @@ FROM
 SELECT COUNT(CASE WHEN eheh.interest_id IS NOT NULL AND eheh.id IS NULL THEN 1 ELSE NULL END) AS missing_interests_in_interest_map
 FROM
  (SELECT DISTINCT ime.interest_id, ima.id
- FROM 
- fresh_segments.interest_metrics ime
+ FROM fresh_segments.interest_metrics ime
  LEFT JOIN fresh_segments.interest_map ima
  ON CAST(ime.interest_id AS INTEGER) = ima.id) eheh;
 ~~~
@@ -67,8 +66,7 @@ FROM
 SELECT COUNT(CASE WHEN eheh.interest_id IS NULL AND eheh.id IS NOT NULL THEN 1 ELSE NULL END) AS missing_interests_in_interest_metrics
 FROM
  (SELECT DISTINCT ime.interest_id, ima.id
- FROM 
- fresh_segments.interest_metrics ime
+ FROM fresh_segments.interest_metrics ime
  RIGHT JOIN fresh_segments.interest_map ima
  ON CAST(ime.interest_id AS INTEGER) = ima.id) eheh;
 ~~~
@@ -125,8 +123,7 @@ SELECT * FROM
   GROUP BY interest_id
   HAVING COUNT(month_year) >= 6) at_least_6_subq
     
- JOIN
- interest_metrics_cleaned
+ JOIN interest_metrics_cleaned
  USING(interest_id)
     
  GROUP BY interest_id, month_year
